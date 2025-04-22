@@ -9,7 +9,6 @@ import Player from "./Player";
 import AI from "./AI";
 import { usePlayer } from "@/lib/stores/usePlayer";
 import { useAI } from "@/lib/stores/useAI";
-import RemotePlayer from "./RemotePlayer"; // Will create this component later
 
 const Game = () => {
   const { phase, mode } = useGame();
