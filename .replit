@@ -7,7 +7,7 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "cloudrun"
-run = ["sh", "-c", "python3 -m http.server 5000 --directory client/dist"]
+run = ["sh", "-c", "python3 -m http.server 5000"]
 build = ["sh", "-c", "cd client && npm run build"]
 
 [[ports]]
