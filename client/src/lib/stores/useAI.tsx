@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { generateId, normalizeVector } from "@/components/game/Physics";
 import { Projectile } from "./usePlayer";
 import { usePlayer } from "./usePlayer";
+import * as THREE from "three";
 
 interface AIState {
   position: [number, number, number];
@@ -148,11 +149,15 @@ export const useAI = create<AIState>((set, get) => ({
   },
   
   reset: () => {
-    set({
-      position: [10, 0, 10],
-      health: 100,
-      projectiles: [],
-    });
+    // Only reset if actually needed to prevent infinite loops
+    const { health, position } = get();
+    if (health !== 100 || position[0] !== 10 || position[1] !== 0 || position[2] !== 10) {
+      set({
+        position: [10, 0, 10],
+        health: 100,
+        projectiles: [],
+      });
+    }
   },
   
   setDifficulty: (difficulty) => {

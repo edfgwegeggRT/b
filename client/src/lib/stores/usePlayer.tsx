@@ -150,13 +150,17 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
   
   reset: () => {
-    set({
-      position: [0, 0, 0],
-      health: 100,
-      projectiles: [],
-      lastDamageTime: 0,
-      playTime: 0,
-    });
+    // Only reset if actually needed to prevent infinite loops
+    const { health, playTime } = get();
+    if (health !== 100 || playTime !== 0) {
+      set({
+        position: [0, 0, 0],
+        health: 100,
+        projectiles: [],
+        lastDamageTime: 0,
+        playTime: 0,
+      });
+    }
   },
   
   updatePlayTime: (delta) => {

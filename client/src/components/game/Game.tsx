@@ -31,12 +31,17 @@ const Game = () => {
         backgroundMusic.play().catch(err => console.log("Audio play prevented:", err));
       }
       
-      // Reset player and AI states when game starts
-      playerState.reset();
-      aiState.reset();
+      // Initialize states only on first game start
+      // Use a single time setup to prevent update loops
+      const setupGame = () => {
+        // Only reset if needed to prevent excessive updates
+        playerState.reset();
+        aiState.reset();
+        console.log("Game started - controls locked, states reset");
+      };
       
-      // Log for debugging
-      console.log("Game started - controls locked, states reset");
+      // Call setup once
+      setupGame();
     }
     
     // Clean up function
@@ -46,7 +51,8 @@ const Game = () => {
         backgroundMusic.currentTime = 0;
       }
     };
-  }, [phase, backgroundMusic, isMuted, playerState, aiState]);
+  // Remove the dependencies that cause updates, keep only phase and audio
+  }, [phase, backgroundMusic, isMuted]);
 
   // Handle player respawn
   useEffect(() => {
