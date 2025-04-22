@@ -15,7 +15,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Serve Game"
+runButton = "Build and Start"
 
 [[workflows.workflow]]
 name = "Project"
@@ -48,13 +48,4 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm install && npm run build && cd .. && python3 -m http.server 5000 --directory client/dist"
-
-[[workflows.workflow]]
-name = "Serve Game"
-author = 40777486
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 -m http.server 5000"
+args = "npm install && cd client && npm install && npm run build && cd .. && python3 -m http.server 5000 --directory client/dist"
