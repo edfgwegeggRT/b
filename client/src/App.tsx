@@ -5,6 +5,7 @@ import { useAudio } from "./lib/stores/useAudio";
 import "@fontsource/inter";
 import Game from "./components/game/Game";
 import { useGame } from "./lib/stores/useGame";
+// Fix UI import path
 import GameUI from "./components/ui/GameUI";
 
 // Define control keys for the game
