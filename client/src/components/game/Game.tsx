@@ -53,13 +53,11 @@ const Game = () => {
     }
   }, [playerState.health, phase]);
 
-  // Handle AI respawn
+  // Handle game end when AI dies
   useEffect(() => {
     if (aiState.health <= 0 && phase === "playing") {
-      console.log("AI died, respawning");
-      setTimeout(() => {
-        aiState.reset();
-      }, 3000);
+      console.log("AI died, returning to home");
+      useGame.getState().returnToHome();
     }
   }, [aiState.health, phase]);
 

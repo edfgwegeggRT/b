@@ -91,19 +91,8 @@ const AI = () => {
     if (pathfindingTimer.current > 0.5) {
       pathfindingTimer.current = 0;
       
-      // Determine AI state based on situation
-      let newState: AIBehaviorState = behaviorState;
-      
-      if (aiStore.health < 30) {
-        // When low health, retreat or find cover
-        newState = Math.random() > 0.3 ? "retreat" : "findCover";
-      } else if (distanceToPlayer < 15) {
-        // When close to player, attack
-        newState = "attack";
-      } else {
-        // Otherwise chase the player
-        newState = "chase";
-      }
+      // AI will always chase the player
+      let newState: AIBehaviorState = "chase";
       
       // Only update state if it changes
       if (newState !== behaviorState) {
