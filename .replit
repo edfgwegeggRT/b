@@ -7,14 +7,15 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "cloudrun"
-run = ["sh", "-c", "npm run dev"]
+run = ["sh", "-c", "python3 -m http.server 5000 --directory client/dist"]
+build = ["sh", "-c", "cd client && npm run build"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Project"
+runButton = "Build and Start"
 
 [[workflows.workflow]]
 name = "Project"
@@ -39,3 +40,12 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Build and Start"
+author = 40777486
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build && cd .. && python3 -m http.server 5000 --directory client/dist"

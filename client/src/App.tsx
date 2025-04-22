@@ -114,7 +114,7 @@ const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
             <line x1="16" y1="12" x2="22" y2="12" />
           </svg>
         </div>
-        
+
         {/* Health bar and ammo counter */}
         <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
           {/* Health */}
@@ -127,7 +127,7 @@ const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
               />
             </div>
           </div>
-          
+
           {/* Ammo */}
           <div className="flex flex-col gap-1 items-end">
             <div className="text-white text-sm">AMMO</div>
@@ -139,7 +139,7 @@ const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
             </div>
           </div>
         </div>
-        
+
         {/* AI information */}
         <div className="absolute top-6 right-6 flex flex-col items-end gap-1">
           <div className="text-white text-sm">ENEMY HEALTH</div>
@@ -150,18 +150,18 @@ const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
             />
           </div>
         </div>
-        
+
         {/* Game info and score */}
         <div className="absolute top-6 left-6 flex flex-col gap-1">
           <div className="text-white text-sm">SCORE: {playerState.score}</div>
           <div className="text-white text-sm">TIME: {Math.floor(playerState.playTime)}s</div>
         </div>
-        
+
         {/* Controls reminder */}
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
           WASD: Move | SPACE: Jump | R: Reload | Q: Change Weapon | B: Build | LMB: Shoot
         </div>
-        
+
         {/* Sound toggle button (with pointer events enabled) */}
         <button 
           className="absolute top-6 left-1/2 transform -translate-x-1/2 text-white bg-gray-800 rounded-full w-10 h-10 flex items-center justify-center pointer-events-auto"
@@ -180,14 +180,14 @@ const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
             </svg>
           )}
         </button>
-        
+
         {/* Reload indicator */}
         {weaponsState.reloading && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-16 text-white font-bold text-lg bg-black bg-opacity-50 p-2 rounded">
             RELOADING...
           </div>
         )}
-        
+
         {/* Damage indicator when hit */}
         {playerState.lastDamageTime > 0 && (
           <div className="absolute inset-0 pointer-events-none border-8 border-red-500 border-opacity-30 animate-pulse" />
@@ -220,7 +220,7 @@ function App() {
     const success = new Audio("/sounds/success.mp3");
     success.volume = 0.5;
     setSuccessSound(success);
-    
+
     setShowCanvas(true);
   }, [setBackgroundMusic, setHitSound, setSuccessSound]);
 
@@ -252,7 +252,7 @@ function App() {
           {phase === "home" && (
             <HomePage onSelectMode={handleSelectMode} />
           )}
-          
+
           {/* Game UI (rendered as HTML, outside of Canvas) */}
           {phase !== "home" && (
             <GameUI 
@@ -261,7 +261,7 @@ function App() {
               onBackToHome={handleReturnToHome}
             />
           )}
-          
+
           {/* Game Canvas/3D Content */}
           <KeyboardControls map={keyMap}>
             <Canvas
@@ -279,7 +279,7 @@ function App() {
             >
               <color attach="background" args={["#87CEEB"]} />
               <fog attach="fog" args={["#87CEEB", 30, 100]} />
-              
+
               <Suspense fallback={null}>
                 {/* Only render Game component when not in home phase */}
                 {phase !== "home" && <Game />}
