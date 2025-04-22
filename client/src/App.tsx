@@ -4,10 +4,11 @@ import { KeyboardControls, PointerLockControls } from "@react-three/drei";
 import { useAudio } from "./lib/stores/useAudio";
 import "@fontsource/inter";
 import Game from "./components/game/Game";
-import { useGame } from "./lib/stores/useGame";
+import { useGame, GameMode } from "./lib/stores/useGame";
 import { usePlayer } from './lib/stores/usePlayer';
 import { useWeapons } from './lib/stores/useWeapons';
 import { useAI } from './lib/stores/useAI';
+import HomePage from './components/ui/HomePage';
 
 // Define control keys for the game
 export enum Controls {
@@ -38,9 +39,10 @@ const keyMap = [
 interface GameUIProps {
   onStartGame: () => void;
   onRestartGame: () => void;
+  onBackToHome: () => void;
 }
 
-const GameUI = ({ onStartGame, onRestartGame }: GameUIProps) => {
+const GameUI = ({ onStartGame, onRestartGame, onBackToHome }: GameUIProps) => {
   const { phase } = useGame();
   const playerState = usePlayer();
   const aiState = useAI();
@@ -53,12 +55,20 @@ const GameUI = ({ onStartGame, onRestartGame }: GameUIProps) => {
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black bg-opacity-70 text-white">
         <h1 className="text-5xl font-bold mb-8">3D SHOOTER</h1>
         <p className="mb-8 text-xl">Battle against AI in a first-person shooter with building mechanics</p>
-        <button
-          onClick={onStartGame}
-          className="px-8 py-3 bg-primary text-primary-foreground rounded-md text-xl hover:bg-primary/90 transition-colors"
-        >
-          Start Game
-        </button>
+        <div className="flex flex-col space-y-4">
+          <button
+            onClick={onStartGame}
+            className="px-8 py-3 bg-primary text-primary-foreground rounded-md text-xl hover:bg-primary/90 transition-colors"
+          >
+            Start Game
+          </button>
+          <button
+            onClick={onBackToHome}
+            className="px-8 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Back to Mode Selection
+          </button>
+        </div>
       </div>
     );
   }
@@ -70,12 +80,20 @@ const GameUI = ({ onStartGame, onRestartGame }: GameUIProps) => {
         <h1 className="text-4xl font-bold mb-6">Game Over</h1>
         <p className="mb-4">Score: {playerState.score}</p>
         <p className="mb-6">Time Survived: {Math.floor(playerState.playTime)}s</p>
-        <button
-          onClick={onRestartGame}
-          className="px-8 py-3 bg-primary text-primary-foreground rounded-md text-xl hover:bg-primary/90 transition-colors"
-        >
-          Play Again
-        </button>
+        <div className="flex flex-col space-y-4">
+          <button
+            onClick={onRestartGame}
+            className="px-8 py-3 bg-primary text-primary-foreground rounded-md text-xl hover:bg-primary/90 transition-colors"
+          >
+            Play Again
+          </button>
+          <button
+            onClick={onBackToHome}
+            className="px-8 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Back to Mode Selection
+          </button>
+        </div>
       </div>
     );
   }
@@ -214,12 +232,33 @@ function App() {
     useGame.getState().restart();
   };
 
+  // Handle game mode selection
+  const handleSelectMode = (mode: GameMode) => {
+    useGame.getState().selectMode(mode);
+  };
+
+  // Handle return to home
+  const handleReturnToHome = () => {
+    useGame.getState().returnToHome();
+  };
+
   return (
     <div className="w-full h-full relative overflow-hidden">
       {showCanvas && (
         <>
+          {/* Home Page UI (only shown when in home phase) */}
+          {phase === "home" && (
+            <HomePage onSelectMode={handleSelectMode} />
+          )}
+          
           {/* Game UI (rendered as HTML, outside of Canvas) */}
-          <GameUI onStartGame={startGame} onRestartGame={restartGame} />
+          {phase !== "home" && (
+            <GameUI 
+              onStartGame={startGame} 
+              onRestartGame={restartGame} 
+              onBackToHome={handleReturnToHome}
+            />
+          )}
           
           {/* Game Canvas/3D Content */}
           <KeyboardControls map={keyMap}>
@@ -240,7 +279,8 @@ function App() {
               <fog attach="fog" args={["#87CEEB", 30, 100]} />
               
               <Suspense fallback={null}>
-                <Game />
+                {/* Only render Game component when not in home phase */}
+                {phase !== "home" && <Game />}
               </Suspense>
             </Canvas>
           </KeyboardControls>

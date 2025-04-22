@@ -209,12 +209,39 @@ const Player = () => {
 
   return (
     <>
-      {/* Player mesh (invisible in first person) */}
+      {/* Player character model */}
       <group ref={playerRef}>
+        {/* Player body (not visible in first person view) */}
         <mesh visible={false}>
           <boxGeometry args={[1, 1.8, 1]} />
           <meshStandardMaterial color="blue" />
         </mesh>
+        
+        {/* Player arms (visible in first person) */}
+        <group position={[0, -0.3, -0.2]}>
+          {/* Right arm */}
+          <mesh position={[0.4, 0, 0]} rotation={[0, 0, -Math.PI / 8]}>
+            <boxGeometry args={[0.2, 0.8, 0.2]} />
+            <meshStandardMaterial color="#d4a373" /> {/* Skin color */}
+          </mesh>
+          
+          {/* Left arm */}
+          <mesh position={[-0.2, 0, 0]} rotation={[0, 0, Math.PI / 8]}>
+            <boxGeometry args={[0.2, 0.8, 0.2]} />
+            <meshStandardMaterial color="#d4a373" /> {/* Skin color */}
+          </mesh>
+          
+          {/* Clothing (sleeves) */}
+          <mesh position={[0.4, 0.3, 0]}>
+            <boxGeometry args={[0.25, 0.3, 0.25]} />
+            <meshStandardMaterial color="#2b4050" /> {/* Dark blue */}
+          </mesh>
+          
+          <mesh position={[-0.2, 0.3, 0]}>
+            <boxGeometry args={[0.25, 0.3, 0.25]} />
+            <meshStandardMaterial color="#2b4050" /> {/* Dark blue */}
+          </mesh>
+        </group>
         
         {/* Weapon model */}
         <Weapons position={[0.3, -0.3, -0.5]} />

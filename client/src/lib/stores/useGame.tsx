@@ -1,20 +1,32 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
-export type GamePhase = "ready" | "playing" | "ended";
+export type GamePhase = "home" | "ready" | "playing" | "ended";
+export type GameMode = "singleplayer" | "multiplayer";
 
 interface GameState {
   phase: GamePhase;
+  mode: GameMode | null;
   
   // Actions
+  selectMode: (mode: GameMode) => void;
   start: () => void;
   restart: () => void;
   end: () => void;
+  returnToHome: () => void;
 }
 
 export const useGame = create<GameState>()(
   subscribeWithSelector((set) => ({
-    phase: "ready",
+    phase: "home", // Start at home screen initially
+    mode: null,
+    
+    selectMode: (mode) => {
+      set({ 
+        mode,
+        phase: "ready" // Move to ready phase after selecting a mode
+      });
+    },
     
     start: () => {
       set((state) => {
@@ -37,6 +49,13 @@ export const useGame = create<GameState>()(
           return { phase: "ended" };
         }
         return {};
+      });
+    },
+    
+    returnToHome: () => {
+      set({ 
+        phase: "home",
+        mode: null
       });
     }
   }))
