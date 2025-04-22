@@ -53,11 +53,11 @@ const Game = () => {
     }
   }, [playerState.health, phase]);
 
-  // Handle game end when AI dies
+  // Handle win when AI dies
   useEffect(() => {
     if (aiState.health <= 0 && phase === "playing") {
-      console.log("AI died, returning to home");
-      useGame.getState().returnToHome();
+      console.log("AI died, player won!");
+      useGame.getState().end();
     }
   }, [aiState.health, phase]);
 

@@ -90,12 +90,23 @@ const KeyboardController = ({ camera }: { camera: THREE.Camera }) => {
       }
     );
 
+    // Start game handler
+    const unsubStartGame = subscribe(
+      (state: any) => state.startGame,
+      (pressed: boolean) => {
+        if (pressed && phase === "ready") {
+          useGame.getState().start();
+        }
+      }
+    );
+
     return () => {
       // Clean up all subscriptions
       if (unsubWeaponSwitch) unsubWeaponSwitch();
       if (unsubReload) unsubReload();
       if (unsubShoot) unsubShoot();
       if (unsubBuild) unsubBuild();
+      if (unsubStartGame) unsubStartGame();
     };
   }, [camera, phase, playerState, weaponsState, buildingState]);
 

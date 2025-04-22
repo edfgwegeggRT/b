@@ -159,12 +159,8 @@ const AI = () => {
       }
     }
     
-    // AI Movement
-    const moveSpeed = 2.5 * delta;
-    const moveDirection = new THREE.Vector3().subVectors(targetPosition.current, aiPosition).normalize();
-    
-    // Move towards target (with simple obstacle avoidance)
-    aiPosition.add(moveDirection.multiplyScalar(moveSpeed));
+    // AI stands still
+    aiPosition.set(10, 0, 10);
     
     // Keep AI on the ground
     if (aiPosition.y > 0) {

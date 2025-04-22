@@ -9,7 +9,7 @@ interface AIState {
   health: number;
   difficulty: "easy" | "medium" | "hard";
   projectiles: Projectile[];
-  
+
   // Actions
   setPosition: (position: [number, number, number]) => void;
   takeDamage: (amount: number) => void;
@@ -25,14 +25,14 @@ export const useAI = create<AIState>((set, get) => ({
   health: 100,
   difficulty: "medium",
   projectiles: [],
-  
+
   setPosition: (position) => {
     set({ position });
   },
-  
+
   takeDamage: (amount) => {
     const { health, difficulty } = get();
-    
+
     // Adjust damage based on difficulty
     let damageMultiplier = 1;
     switch (difficulty) {
@@ -45,33 +45,33 @@ export const useAI = create<AIState>((set, get) => ({
       default:
         damageMultiplier = 1;
     }
-    
+
     const actualDamage = amount * damageMultiplier;
     const newHealth = Math.max(0, health - actualDamage);
-    
+
     set({ health: newHealth });
-    
+
     // Give player score when damaging AI
     if (newHealth < health) {
       usePlayer.getState().addScore(Math.ceil(actualDamage));
-      
+
       // Give bonus score for kill
       if (newHealth <= 0) {
         usePlayer.getState().addScore(50);
       }
     }
   },
-  
-  shoot: (direction) => {
+
+  shoot: (direction: THREE.Vector3) => {
     const { position, projectiles, difficulty } = get();
-    
+
     // Convert direction to array format
     const dir: [number, number, number] = [
       direction.x,
       direction.y,
       direction.z
     ];
-    
+
     // Add inaccuracy based on difficulty
     let inaccuracy = 0;
     switch (difficulty) {
@@ -85,37 +85,37 @@ export const useAI = create<AIState>((set, get) => ({
         inaccuracy = 0.03; // Very accurate on hard
         break;
     }
-    
+
     // Add random spread
     const spreadDirection: [number, number, number] = [
       dir[0] + (Math.random() - 0.5) * inaccuracy,
       dir[1] + (Math.random() - 0.5) * inaccuracy,
       dir[2] + (Math.random() - 0.5) * inaccuracy
     ];
-    
+
     // Normalize direction
     const normalizedDirection = normalizeVector(spreadDirection);
-    
+
     // Create projectile
     const newProjectile: Projectile = {
       id: generateId(),
       position: [position[0], position[1] + 1.5, position[2]], // Start at AI eye level
       direction: normalizedDirection,
       speed: 40, // Units per second
-      damage: difficulty === "hard" ? 15 : difficulty === "medium" ? 10 : 5,
+      damage: 0, // AI does no damage
       timeCreated: Date.now(),
       color: "red",
       hit: false,
     };
-    
+
     set({
       projectiles: [...projectiles, newProjectile],
     });
   },
-  
+
   updateProjectiles: (delta) => {
     const { projectiles } = get();
-    
+
     // Update projectile positions
     const updatedProjectiles = projectiles
       .filter(projectile => {
@@ -130,16 +130,16 @@ export const useAI = create<AIState>((set, get) => ({
           projectile.position[1] + projectile.direction[1] * projectile.speed * delta,
           projectile.position[2] + projectile.direction[2] * projectile.speed * delta,
         ];
-        
+
         return {
           ...projectile,
           position: newPosition,
         };
       });
-    
+
     set({ projectiles: updatedProjectiles });
   },
-  
+
   hitProjectile: (id) => {
     set(state => ({
       projectiles: state.projectiles.map(p => 
@@ -147,7 +147,7 @@ export const useAI = create<AIState>((set, get) => ({
       ),
     }));
   },
-  
+
   reset: () => {
     // Only reset if actually needed to prevent infinite loops
     const { health, position } = get();
@@ -159,7 +159,7 @@ export const useAI = create<AIState>((set, get) => ({
       });
     }
   },
-  
+
   setDifficulty: (difficulty) => {
     set({ difficulty });
   },

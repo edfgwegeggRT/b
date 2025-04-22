@@ -20,7 +20,8 @@ export enum Controls {
   shoot = 'shoot',
   reload = 'reload',
   build = 'build',
-  weaponSwitch = 'weaponSwitch'
+  weaponSwitch = 'weaponSwitch',
+  startGame = 'startGame'
 }
 
 const keyMap = [
@@ -32,7 +33,8 @@ const keyMap = [
   { name: Controls.shoot, keys: ["Mouse0"] }, // Left mouse button
   { name: Controls.reload, keys: ["KeyR"] },
   { name: Controls.build, keys: ["KeyB"] },
-  { name: Controls.weaponSwitch, keys: ["KeyQ"] }
+  { name: Controls.weaponSwitch, keys: ["KeyQ"] },
+  { name: Controls.startGame, keys: ["KeyE"] }
 ];
 
 // Define GameUI component directly to avoid import issues
