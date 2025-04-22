@@ -9,7 +9,11 @@ type MessageType =
   | "projectile_create"
   | "projectile_hit"
   | "structure_create"
-  | "structure_damage";
+  | "structure_damage"
+  | "player_list"
+  | "player_join"
+  | "player_leave"
+  | "match_found";
 
 // Message interface
 interface WebSocketMessage {
@@ -29,13 +33,19 @@ export function setupWebSocketServer(server: Server) {
   // Create WebSocket server
   const wss = new WebSocket.Server({ server });
   
-  // Track connected players
+  // Track connected players and their WebSocket connections
   const players = new Map<string, PlayerData>();
+  const connections = new Map<string, WebSocket>();
+  
+  // 1v1 matchmaking state
+  const waitingPlayers: string[] = [];
+  const matches = new Map<string, string[]>(); // matchId -> [playerId1, playerId2]
+  const playerMatches = new Map<string, string>(); // playerId -> matchId
   
   // Connection handler
   wss.on("connection", (ws) => {
     // Generate unique ID for player
-    const playerId = Math.random().toString(36).substring(2, 9);
+    const playerId = "player_" + Math.random().toString(36).substring(2, 9);
     console.log(`WebSocket: New player connected (${playerId})`);
     
     // Add player to connected players
@@ -45,24 +55,63 @@ export function setupWebSocketServer(server: Server) {
       health: 100
     });
     
+    // Store connection
+    connections.set(playerId, ws);
+    
     // Send initial connection message with player ID
     ws.send(JSON.stringify({
       type: "connect",
       data: {
         id: playerId,
-        players: Array.from(players.values())
+        players: [] // Don't send all players - will be handled by matchmaking
       }
     }));
     
-    // Broadcast new player to all other players
-    broadcastToOthers(playerId, {
-      type: "connect",
-      data: {
-        id: playerId,
-        position: [0, 0, 0],
-        health: 100
+    // 1v1 Matchmaking - add player to waiting list
+    waitingPlayers.push(playerId);
+    console.log(`WebSocket: Player ${playerId} added to matchmaking queue`);
+    
+    // If we have two waiting players, create a match
+    if (waitingPlayers.length >= 2) {
+      const player1Id = waitingPlayers.shift()!;
+      const player2Id = waitingPlayers.shift()!;
+      
+      // Create a new match
+      const matchId = `match_${Date.now()}`;
+      matches.set(matchId, [player1Id, player2Id]);
+      playerMatches.set(player1Id, matchId);
+      playerMatches.set(player2Id, matchId);
+      
+      console.log(`WebSocket: Created 1v1 match ${matchId} between ${player1Id} and ${player2Id}`);
+      
+      // Get player connections
+      const player1Ws = connections.get(player1Id);
+      const player2Ws = connections.get(player2Id);
+      
+      if (player1Ws && player2Ws) {
+        // Get player data
+        const player1Data = players.get(player1Id);
+        const player2Data = players.get(player2Id);
+        
+        if (player1Data && player2Data) {
+          // Notify player 1 about player 2
+          player1Ws.send(JSON.stringify({
+            type: "match_found",
+            data: {
+              opponent: player2Data
+            }
+          }));
+          
+          // Notify player 2 about player 1
+          player2Ws.send(JSON.stringify({
+            type: "match_found",
+            data: {
+              opponent: player1Data
+            }
+          }));
+        }
       }
-    });
+    }
     
     // Message handler
     ws.on("message", (message: string) => {
@@ -71,6 +120,17 @@ export function setupWebSocketServer(server: Server) {
         
         // Handle different message types
         switch (parsedMessage.type) {
+          case "connect":
+            // Client confirms connection with their data
+            if (parsedMessage.data.id && parsedMessage.data.position) {
+              // Update player data
+              const playerData = players.get(playerId);
+              if (playerData) {
+                playerData.position = parsedMessage.data.position;
+                playerData.health = parsedMessage.data.health || 100;
+              }
+            }
+            break;
           case "player_update":
             handlePlayerUpdate(playerId, parsedMessage.data);
             break;
@@ -100,6 +160,43 @@ export function setupWebSocketServer(server: Server) {
       
       // Remove player from connected players
       players.delete(playerId);
+      connections.delete(playerId);
+      
+      // Remove from waiting queue if present
+      const waitingIndex = waitingPlayers.indexOf(playerId);
+      if (waitingIndex !== -1) {
+        waitingPlayers.splice(waitingIndex, 1);
+      }
+      
+      // Check if player was in a match
+      const matchId = playerMatches.get(playerId);
+      if (matchId) {
+        // Get the match players
+        const matchPlayerIds = matches.get(matchId);
+        
+        if (matchPlayerIds) {
+          // Notify the opponent that this player has left
+          for (const opponentId of matchPlayerIds) {
+            if (opponentId !== playerId) {
+              const opponentWs = connections.get(opponentId);
+              if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
+                opponentWs.send(JSON.stringify({
+                  type: "player_leave",
+                  data: {
+                    id: playerId
+                  }
+                }));
+              }
+            }
+          }
+          
+          // Remove match
+          matches.delete(matchId);
+        }
+        
+        // Remove player from match mapping
+        playerMatches.delete(playerId);
+      }
       
       // Broadcast disconnect to all other players
       broadcastToOthers(playerId, {
@@ -110,22 +207,52 @@ export function setupWebSocketServer(server: Server) {
       });
     });
     
-    // Broadcast to all players except sender
-    function broadcastToOthers(senderId: string, message: WebSocketMessage) {
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(message));
+    // Broadcast to opponent in the same match
+    function broadcastToOpponent(senderId: string, message: WebSocketMessage) {
+      // Check if player is in a match
+      const matchId = playerMatches.get(senderId);
+      if (matchId) {
+        // Get match players
+        const matchPlayerIds = matches.get(matchId);
+        if (matchPlayerIds) {
+          // Find the opponent
+          for (const opponentId of matchPlayerIds) {
+            if (opponentId !== senderId) {
+              // Get opponent connection
+              const opponentWs = connections.get(opponentId);
+              if (opponentWs && opponentWs.readyState === WebSocket.OPEN) {
+                // Send message to opponent
+                opponentWs.send(JSON.stringify(message));
+              }
+            }
+          }
         }
-      });
+      }
     }
     
-    // Broadcast to all players including sender
+    // Broadcast to all players except sender (legacy method, kept for compatibility)
+    function broadcastToOthers(senderId: string, message: WebSocketMessage) {
+      // Use the new match-based method instead
+      broadcastToOpponent(senderId, message);
+    }
+    
+    // Broadcast to all players in the same match
     function broadcastToAll(message: WebSocketMessage) {
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(message));
+      // Check if player is in a match
+      const matchId = playerMatches.get(playerId);
+      if (matchId) {
+        // Get match players
+        const matchPlayerIds = matches.get(matchId);
+        if (matchPlayerIds) {
+          // Send to all players in the match
+          for (const matchPlayerId of matchPlayerIds) {
+            const playerWs = connections.get(matchPlayerId);
+            if (playerWs && playerWs.readyState === WebSocket.OPEN) {
+              playerWs.send(JSON.stringify(message));
+            }
+          }
         }
-      });
+      }
     }
     
     // Handler functions

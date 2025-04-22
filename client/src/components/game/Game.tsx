@@ -20,6 +20,10 @@ const Game = () => {
   const lastFrameTime = useRef(0);
   const [remotePlayers, setRemotePlayers] = useState<{id: string, position: [number, number, number]}[]>([]);
 
+  // WebSocket connection
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+
   // Initialize the game
   useEffect(() => {
     if (phase === "playing") {
@@ -37,8 +41,84 @@ const Game = () => {
       const setupGame = () => {
         // Only reset if needed to prevent excessive updates
         playerState.reset();
-        aiState.reset();
-        console.log("Game started - controls locked, states reset");
+        
+        // Only reset AI in singleplayer mode
+        if (mode === "singleplayer") {
+          aiState.reset();
+        }
+        
+        console.log(`Game started in ${mode} mode - controls locked, states reset`);
+        
+        // Setup WebSocket for multiplayer mode
+        if (mode === "multiplayer" && !socketRef.current) {
+          // Create WebSocket connection
+          const ws = new WebSocket(`ws://${window.location.host}`);
+          
+          // Generate a unique player ID
+          const playerId = "player_" + Math.random().toString(36).substring(2, 9);
+
+          ws.onopen = () => {
+            console.log("WebSocket connection established");
+            // Send initial player data
+            const playerData = {
+              id: playerId,
+              position: playerState.position,
+              health: playerState.health
+            };
+            
+            ws.send(JSON.stringify({
+              type: "connect",
+              data: playerData
+            }));
+          };
+          
+          ws.onmessage = (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              console.log("WebSocket message received:", message);
+              
+              // Handle different message types
+              switch (message.type) {
+                case "player_list":
+                  // Update remote players list
+                  setRemotePlayers(message.data.filter((p: any) => p.id !== playerId));
+                  break;
+                case "player_update":
+                  // Update a specific player's position
+                  setRemotePlayers(prev => 
+                    prev.map(p => p.id === message.data.id ? 
+                      { ...p, position: message.data.position } : p
+                    )
+                  );
+                  break;
+                case "player_join":
+                  // Add a new player
+                  if (message.data.id !== playerId) {
+                    setRemotePlayers(prev => [...prev, message.data]);
+                  }
+                  break;
+                case "player_leave":
+                  // Remove a player
+                  setRemotePlayers(prev => prev.filter(p => p.id !== message.data.id));
+                  break;
+              }
+            } catch (error) {
+              console.error("Error parsing WebSocket message:", error);
+            }
+          };
+          
+          ws.onclose = () => {
+            console.log("WebSocket connection closed");
+          };
+          
+          ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+          };
+          
+          // Store the WebSocket connection
+          setSocket(ws);
+          socketRef.current = ws;
+        }
       };
       
       // Call setup once
@@ -51,9 +131,15 @@ const Game = () => {
         backgroundMusic.pause();
         backgroundMusic.currentTime = 0;
       }
+      
+      // Close WebSocket connection when component unmounts or game phase changes
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
     };
   // Remove the dependencies that cause updates, keep only phase and audio
-  }, [phase, backgroundMusic, isMuted]);
+  }, [phase, backgroundMusic, isMuted, mode]);
 
   // Handle player respawn
   useEffect(() => {
