@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 export type GamePhase = "home" | "ready" | "playing" | "ended";
-export type GameMode = "singleplayer" | "multiplayer";
+export type GameMode = "singleplayer";
 
 interface GameState {
   phase: GamePhase;
