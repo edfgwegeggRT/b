@@ -224,15 +224,61 @@ const AI = () => {
     <>
       {/* AI Character */}
       <group ref={aiRef}>
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[1, 2, 1]} />
-          <meshStandardMaterial color="red" />
+        {/* Body */}
+        <mesh position={[0, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1, 1.8, 1]} />
+          <meshStandardMaterial color="#a91b0d" /> {/* Dark red */}
+        </mesh>
+        
+        {/* Head */}
+        <mesh position={[0, 1.15, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.8, 0.8, 0.8]} />
+          <meshStandardMaterial color="#7c190b" /> {/* Darker red for head */}
+        </mesh>
+        
+        {/* Arms */}
+        <mesh position={[0.65, 0.2, 0]} rotation={[0, 0, -Math.PI / 12]} castShadow receiveShadow>
+          <boxGeometry args={[0.25, 1, 0.25]} />
+          <meshStandardMaterial color="#a91b0d" />
+        </mesh>
+        
+        <mesh position={[-0.65, 0.2, 0]} rotation={[0, 0, Math.PI / 12]} castShadow receiveShadow>
+          <boxGeometry args={[0.25, 1, 0.25]} />
+          <meshStandardMaterial color="#a91b0d" />
+        </mesh>
+        
+        {/* Legs */}
+        <mesh position={[0.3, -1, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.25, 1, 0.25]} />
+          <meshStandardMaterial color="#7c190b" />
+        </mesh>
+        
+        <mesh position={[-0.3, -1, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.25, 1, 0.25]} />
+          <meshStandardMaterial color="#7c190b" />
+        </mesh>
+        
+        {/* Eyes (glowing effect) */}
+        <mesh position={[0.2, 1.15, 0.41]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.1, 0.05]} />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
+        </mesh>
+        
+        <mesh position={[-0.2, 1.15, 0.41]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.1, 0.05]} />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
         </mesh>
         
         {/* AI weapon */}
-        <mesh position={[0.5, 0, -0.5]}>
-          <boxGeometry args={[0.2, 0.2, 1]} />
-          <meshStandardMaterial color="darkgrey" />
+        <mesh position={[0.65, 0.2, -0.6]} rotation={[0, 0, -Math.PI / 12]} castShadow receiveShadow>
+          <boxGeometry args={[0.15, 0.15, 1.2]} />
+          <meshStandardMaterial color="#333333" />
+        </mesh>
+        
+        {/* Weapon details */}
+        <mesh position={[0.65, 0.3, -0.9]} rotation={[0, 0, -Math.PI / 12]} castShadow receiveShadow>
+          <boxGeometry args={[0.2, 0.1, 0.1]} />
+          <meshStandardMaterial color="#111111" />
         </mesh>
       </group>
       

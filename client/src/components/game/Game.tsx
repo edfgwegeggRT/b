@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { PointerLockControls, Stats } from "@react-three/drei";
@@ -9,15 +9,17 @@ import Player from "./Player";
 import AI from "./AI";
 import { usePlayer } from "@/lib/stores/usePlayer";
 import { useAI } from "@/lib/stores/useAI";
+import RemotePlayer from "./RemotePlayer"; // Will create this component later
 
 const Game = () => {
-  const { phase } = useGame();
+  const { phase, mode } = useGame();
   const { backgroundMusic, isMuted } = useAudio();
   const controlsRef = useRef<any>(null);
   const { camera, gl } = useThree();
   const playerState = usePlayer();
   const aiState = useAI();
   const lastFrameTime = useRef(0);
+  const [remotePlayers, setRemotePlayers] = useState<{id: string, position: [number, number, number]}[]>([]);
 
   // Initialize the game
   useEffect(() => {
@@ -122,6 +124,16 @@ const Game = () => {
     };
   }, [gl, phase]);
 
+  // Create a placeholder component for RemotePlayer until we create the actual file
+  const RemotePlayerPlaceholder = ({ id, position }: { id: string, position: [number, number, number] }) => {
+    return (
+      <mesh position={position} castShadow receiveShadow>
+        <boxGeometry args={[1, 1.8, 1]} />
+        <meshStandardMaterial color="blue" />
+      </mesh>
+    );
+  };
+
   return (
     <>
       {/* Performance stats (visible in development) */}
@@ -136,8 +148,22 @@ const Game = () => {
       {/* Player instance */}
       <Player />
       
-      {/* AI opponent */}
-      <AI />
+      {/* Render opponents based on game mode */}
+      {mode === "singleplayer" ? (
+        // Render AI in singleplayer mode
+        <AI />
+      ) : (
+        // Render remote players in multiplayer mode
+        <>
+          {remotePlayers.map(player => (
+            <RemotePlayerPlaceholder 
+              key={player.id} 
+              id={player.id} 
+              position={player.position} 
+            />
+          ))}
+        </>
+      )}
     </>
   );
 };
