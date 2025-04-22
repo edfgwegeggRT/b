@@ -30,8 +30,12 @@ interface PlayerData {
 
 // WebSocket handler for multiplayer functionality
 export function setupWebSocketServer(server: Server) {
-  // Create WebSocket server
-  const wss = new WebSocket.Server({ server });
+  // Create WebSocket server that works with both HTTP and HTTPS
+  const wss = new WebSocket.Server({ 
+    server,
+    // Enable connection from both secure and insecure origins
+    perMessageDeflate: true 
+  });
   
   // Track connected players and their WebSocket connections
   const players = new Map<string, PlayerData>();

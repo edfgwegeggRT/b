@@ -10,6 +10,13 @@ import AI from "./AI";
 import { usePlayer } from "@/lib/stores/usePlayer";
 import { useAI } from "@/lib/stores/useAI";
 
+// Type for remote player
+interface RemotePlayer {
+  id: string;
+  position: [number, number, number];
+  health: number;
+}
+
 const Game = () => {
   const { phase, mode } = useGame();
   const { backgroundMusic, isMuted } = useAudio();
@@ -18,15 +25,21 @@ const Game = () => {
   const playerState = usePlayer();
   const aiState = useAI();
   const lastFrameTime = useRef(0);
-  const [remotePlayers, setRemotePlayers] = useState<{id: string, position: [number, number, number]}[]>([]);
+  const [remotePlayers, setRemotePlayers] = useState<RemotePlayer[]>([]);
 
   // WebSocket connection
-  const [socket, setSocket] = useState<WebSocket | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  // Store player ID to filter out own messages
+  const playerIdRef = useRef<string>("");
+  // Connection and matchmaking status
+  const [connectionStatus, setConnectionStatus] = useState<"disconnected" | "connecting" | "connected" | "matched">("disconnected");
+  // Timer for WebSocket heartbeat
+  const heartbeatTimerRef = useRef<number | null>(null);
 
   // Initialize the game
   useEffect(() => {
     if (phase === "playing") {
+      // Lock controls when game starts
       if (controlsRef.current) {
         controlsRef.current.lock();
       }
@@ -36,13 +49,12 @@ const Game = () => {
         backgroundMusic.play().catch(err => console.log("Audio play prevented:", err));
       }
       
-      // Initialize states only on first game start
-      // Use a single time setup to prevent update loops
+      // Initialize game state
       const setupGame = () => {
-        // Only reset if needed to prevent excessive updates
+        // Reset player state
         playerState.reset();
         
-        // Only reset AI in singleplayer mode
+        // Reset AI in singleplayer mode
         if (mode === "singleplayer") {
           aiState.reset();
         }
@@ -51,24 +63,36 @@ const Game = () => {
         
         // Setup WebSocket for multiplayer mode
         if (mode === "multiplayer" && !socketRef.current) {
-          // Create WebSocket connection
-          const ws = new WebSocket(`ws://${window.location.host}`);
+          setupMultiplayerConnection();
+        }
+      };
+      
+      // Setup multiplayer WebSocket connection
+      const setupMultiplayerConnection = () => {
+        try {
+          // Use secure WebSocket if page is loaded over HTTPS
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          console.log(`Connecting to WebSocket with ${protocol} protocol`);
+          
+          // Update connection status
+          setConnectionStatus("connecting");
+          
+          const ws = new WebSocket(`${protocol}//${window.location.host}`);
           
           // Generate a unique player ID
-          const playerId = "player_" + Math.random().toString(36).substring(2, 9);
-
+          playerIdRef.current = "player_" + Math.random().toString(36).substring(2, 9);
+          
           ws.onopen = () => {
             console.log("WebSocket connection established");
-            // Send initial player data
-            const playerData = {
-              id: playerId,
-              position: playerState.position,
-              health: playerState.health
-            };
             
+            // Send initial player data
             ws.send(JSON.stringify({
               type: "connect",
-              data: playerData
+              data: {
+                id: playerIdRef.current,
+                position: playerState.position,
+                health: playerState.health
+              }
             }));
           };
           
@@ -79,27 +103,45 @@ const Game = () => {
               
               // Handle different message types
               switch (message.type) {
-                case "player_list":
-                  // Update remote players list
-                  setRemotePlayers(message.data.filter((p: any) => p.id !== playerId));
+                case "connect":
+                  // Server confirms connection
+                  console.log("Connection confirmed, player ID:", message.data.id);
                   break;
+                  
+                case "player_list":
+                  // Update remote players list (filter out own player)
+                  setRemotePlayers(message.data.filter((p: RemotePlayer) => 
+                    p.id !== playerIdRef.current
+                  ));
+                  break;
+                  
                 case "player_update":
                   // Update a specific player's position
                   setRemotePlayers(prev => 
                     prev.map(p => p.id === message.data.id ? 
-                      { ...p, position: message.data.position } : p
+                      { ...p, position: message.data.position, health: message.data.health } : p
                     )
                   );
                   break;
+                  
                 case "player_join":
                   // Add a new player
-                  if (message.data.id !== playerId) {
+                  if (message.data.id !== playerIdRef.current) {
                     setRemotePlayers(prev => [...prev, message.data]);
                   }
                   break;
+                  
                 case "player_leave":
                   // Remove a player
-                  setRemotePlayers(prev => prev.filter(p => p.id !== message.data.id));
+                  setRemotePlayers(prev => 
+                    prev.filter(p => p.id !== message.data.id)
+                  );
+                  break;
+                  
+                case "match_found":
+                  // Handle match found message
+                  console.log("Match found with opponent:", message.data.opponent);
+                  setRemotePlayers([message.data.opponent]);
                   break;
               }
             } catch (error) {
@@ -109,6 +151,7 @@ const Game = () => {
           
           ws.onclose = () => {
             console.log("WebSocket connection closed");
+            socketRef.current = null;
           };
           
           ws.onerror = (error) => {
@@ -116,8 +159,9 @@ const Game = () => {
           };
           
           // Store the WebSocket connection
-          setSocket(ws);
           socketRef.current = ws;
+        } catch (error) {
+          console.error("Error creating WebSocket connection:", error);
         }
       };
       
@@ -127,6 +171,7 @@ const Game = () => {
     
     // Clean up function
     return () => {
+      // Stop background music
       if (backgroundMusic) {
         backgroundMusic.pause();
         backgroundMusic.currentTime = 0;
@@ -138,7 +183,6 @@ const Game = () => {
         socketRef.current = null;
       }
     };
-  // Remove the dependencies that cause updates, keep only phase and audio
   }, [phase, backgroundMusic, isMuted, mode]);
 
   // Handle player respawn
