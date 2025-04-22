@@ -1,0 +1,139 @@
+import { useEffect, useRef } from "react";
+import { useThree, useFrame } from "@react-three/fiber";
+import * as THREE from "three";
+import { PointerLockControls, Stats } from "@react-three/drei";
+import { useAudio } from "@/lib/stores/useAudio";
+import { useGame } from "@/lib/stores/useGame";
+import World from "./World";
+import Player from "./Player";
+import AI from "./AI";
+import { usePlayer } from "@/lib/stores/usePlayer";
+import { useAI } from "@/lib/stores/useAI";
+
+const Game = () => {
+  const { phase } = useGame();
+  const { backgroundMusic, isMuted } = useAudio();
+  const controlsRef = useRef<any>(null);
+  const { camera, gl } = useThree();
+  const playerState = usePlayer();
+  const aiState = useAI();
+  const lastFrameTime = useRef(0);
+
+  // Initialize the game
+  useEffect(() => {
+    if (phase === "playing") {
+      if (controlsRef.current) {
+        controlsRef.current.lock();
+      }
+      
+      // Start background music if not muted
+      if (backgroundMusic && !isMuted) {
+        backgroundMusic.play().catch(err => console.log("Audio play prevented:", err));
+      }
+      
+      // Reset player and AI states when game starts
+      playerState.reset();
+      aiState.reset();
+      
+      // Log for debugging
+      console.log("Game started - controls locked, states reset");
+    }
+    
+    // Clean up function
+    return () => {
+      if (backgroundMusic) {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      }
+    };
+  }, [phase, backgroundMusic, isMuted, playerState, aiState]);
+
+  // Handle player respawn
+  useEffect(() => {
+    if (playerState.health <= 0 && phase === "playing") {
+      // End the game if player dies
+      useGame.getState().end();
+      console.log("Player died, game ended");
+    }
+  }, [playerState.health, phase]);
+
+  // Handle AI respawn
+  useEffect(() => {
+    if (aiState.health <= 0 && phase === "playing") {
+      console.log("AI died, respawning");
+      setTimeout(() => {
+        aiState.reset();
+      }, 3000);
+    }
+  }, [aiState.health, phase]);
+
+  // Game update logic with frame rate limiting to prevent excessive updates
+  useFrame((state, delta) => {
+    if (phase !== "playing") return;
+    
+    // Throttle updates to 60 frames per second
+    const now = performance.now();
+    if (now - lastFrameTime.current < 16.67) { // 60 FPS = ~16.67ms per frame
+      return;
+    }
+    lastFrameTime.current = now;
+    
+    // Update time counter
+    playerState.updatePlayTime(delta);
+    
+    // Check for game end condition (e.g., time limit)
+    if (playerState.playTime > 300) { // 5 minutes time limit
+      useGame.getState().end();
+    }
+  });
+
+  // Lock/unlock pointer when clicking canvas
+  useEffect(() => {
+    const handleCanvasClick = () => {
+      if (phase === "playing" && controlsRef.current) {
+        controlsRef.current.lock();
+      }
+    };
+
+    const handleControlsUnlock = () => {
+      if (phase === "playing") {
+        console.log("Controls unlocked (paused)");
+      }
+    };
+
+    // Add event listeners
+    gl.domElement.addEventListener("click", handleCanvasClick);
+    if (controlsRef.current) {
+      controlsRef.current.addEventListener("unlock", handleControlsUnlock);
+    }
+
+    // Clean up event listeners
+    return () => {
+      gl.domElement.removeEventListener("click", handleCanvasClick);
+      if (controlsRef.current) {
+        controlsRef.current.removeEventListener("unlock", handleControlsUnlock);
+      }
+    };
+  }, [gl, phase]);
+
+  return (
+    <>
+      {/* Performance stats (visible in development) */}
+      <Stats />
+      
+      {/* First-person camera controls */}
+      <PointerLockControls ref={controlsRef} args={[camera, gl.domElement]} />
+      
+      {/* Game world elements */}
+      <World />
+      
+      {/* Player instance */}
+      <Player />
+      
+      {/* AI opponent */}
+      <AI />
+    </>
+  );
+};
+
+export default Game;
