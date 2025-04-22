@@ -43,49 +43,49 @@ const Game = () => {
       if (controlsRef.current) {
         controlsRef.current.lock();
       }
-      
+
       // Start background music if not muted
       if (backgroundMusic && !isMuted) {
         backgroundMusic.play().catch(err => console.log("Audio play prevented:", err));
       }
-      
+
       // Initialize game state
       const setupGame = () => {
         // Reset player state
         playerState.reset();
-        
+
         // Reset AI in singleplayer mode
         if (mode === "singleplayer") {
           aiState.reset();
         }
-        
+
         console.log(`Game started in ${mode} mode - controls locked, states reset`);
-        
+
         // Setup WebSocket for multiplayer mode
         if (mode === "multiplayer" && !socketRef.current) {
           setupMultiplayerConnection();
         }
       };
-      
+
       // Setup multiplayer WebSocket connection
       const setupMultiplayerConnection = () => {
         try {
           // Use secure WebSocket if page is loaded over HTTPS
           const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
           console.log(`Connecting to WebSocket with ${protocol} protocol`);
-          
+
           // Update connection status
           setConnectionStatus("connecting");
-          
+
           const ws = new WebSocket(`${protocol}//${window.location.host}`);
-          
+
           // Generate a unique player ID
           playerIdRef.current = "player_" + Math.random().toString(36).substring(2, 9);
-          
+
           ws.onopen = () => {
             console.log("WebSocket connection established");
             setConnectionStatus("connected");
-            
+
             // Send initial player data
             ws.send(JSON.stringify({
               type: "connect",
@@ -95,7 +95,7 @@ const Game = () => {
                 health: playerState.health
               }
             }));
-            
+
             // Setup heartbeat to keep connection active
             heartbeatTimerRef.current = window.setInterval(() => {
               if (ws && ws.readyState === WebSocket.OPEN) {
@@ -109,26 +109,26 @@ const Game = () => {
               }
             }, 30000); // Send heartbeat every 30 seconds
           };
-          
+
           ws.onmessage = (event) => {
             try {
               const message = JSON.parse(event.data);
               console.log("WebSocket message received:", message);
-              
+
               // Handle different message types
               switch (message.type) {
                 case "connect":
                   // Server confirms connection
                   console.log("Connection confirmed, player ID:", message.data.id);
                   break;
-                  
+
                 case "player_list":
                   // Update remote players list (filter out own player)
                   setRemotePlayers(message.data.filter((p: RemotePlayer) => 
                     p.id !== playerIdRef.current
                   ));
                   break;
-                  
+
                 case "player_update":
                   // Update a specific player's position
                   setRemotePlayers(prev => 
@@ -137,21 +137,21 @@ const Game = () => {
                     )
                   );
                   break;
-                  
+
                 case "player_join":
                   // Add a new player
                   if (message.data.id !== playerIdRef.current) {
                     setRemotePlayers(prev => [...prev, message.data]);
                   }
                   break;
-                  
+
                 case "player_leave":
                   // Remove a player
                   setRemotePlayers(prev => 
                     prev.filter(p => p.id !== message.data.id)
                   );
                   break;
-                  
+
                 case "match_found":
                   // Handle match found message
                   console.log("Match found with opponent:", message.data.opponent);
@@ -163,35 +163,35 @@ const Game = () => {
               console.error("Error parsing WebSocket message:", error);
             }
           };
-          
+
           ws.onclose = () => {
             console.log("WebSocket connection closed");
             setConnectionStatus("disconnected");
             socketRef.current = null;
-            
+
             // Clear heartbeat timer
             if (heartbeatTimerRef.current) {
               clearInterval(heartbeatTimerRef.current);
               heartbeatTimerRef.current = null;
             }
           };
-          
+
           ws.onerror = (error) => {
             console.error("WebSocket error:", error);
             setConnectionStatus("disconnected");
           };
-          
+
           // Store the WebSocket connection
           socketRef.current = ws;
         } catch (error) {
           console.error("Error creating WebSocket connection:", error);
         }
       };
-      
+
       // Call setup once
       setupGame();
     }
-    
+
     // Clean up function
     return () => {
       // Stop background music
@@ -199,19 +199,19 @@ const Game = () => {
         backgroundMusic.pause();
         backgroundMusic.currentTime = 0;
       }
-      
+
       // Close WebSocket connection when component unmounts or game phase changes
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
-      
+
       // Clear heartbeat timer
       if (heartbeatTimerRef.current) {
         clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = null;
       }
-      
+
       // Reset connection status
       setConnectionStatus("disconnected");
     };
@@ -239,17 +239,17 @@ const Game = () => {
   // Game update logic with frame rate limiting to prevent excessive updates
   useFrame((state, delta) => {
     if (phase !== "playing") return;
-    
+
     // Throttle updates to 60 frames per second
     const now = performance.now();
     if (now - lastFrameTime.current < 16.67) { // 60 FPS = ~16.67ms per frame
       return;
     }
     lastFrameTime.current = now;
-    
+
     // Update time counter
     playerState.updatePlayTime(delta);
-    
+
     // Check for game end condition (e.g., time limit)
     if (playerState.playTime > 300) { // 5 minutes time limit
       useGame.getState().end();
@@ -318,16 +318,16 @@ const Game = () => {
     <>
       {/* Performance stats (visible in development) */}
       <Stats />
-      
+
       {/* First-person camera controls */}
       <PointerLockControls ref={controlsRef} args={[camera, gl.domElement]} />
-      
+
       {/* Game world elements */}
       <World />
-      
+
       {/* Player instance */}
       <Player />
-      
+
       {/* Render opponents based on game mode */}
       {mode === "singleplayer" ? (
         // Render AI in singleplayer mode
@@ -342,24 +342,50 @@ const Game = () => {
               position={player.position} 
             />
           ))}
-          
-          {/* Multiplayer connection status overlay */}
+
+          {/* Multiplayer loading screen */}
           {showConnectionStatus && (
             <Html fullscreen>
               <div style={{
                 position: 'absolute',
-                bottom: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(0, 0, 0, 0.9)',
                 color: 'white',
-                padding: '10px 20px',
-                borderRadius: '5px',
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '16px',
-                textAlign: 'center'
               }}>
-                {getConnectionStatusMessage()}
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  border: '5px solid #333',
+                  borderTop: '5px solid #fff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '20px'
+                }} />
+                <h2 style={{
+                  fontSize: '24px',
+                  marginBottom: '10px'
+                }}>
+                  Looking for Opponent
+                </h2>
+                <p style={{
+                  fontSize: '16px',
+                  opacity: 0.8
+                }}>
+                  {getConnectionStatusMessage()}
+                </p>
+                <style>
+                  {`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
               </div>
             </Html>
           )}
