@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { PointerLockControls, Stats } from "@react-three/drei";
+import { PointerLockControls, Stats, Html } from "@react-three/drei";
 import { useAudio } from "@/lib/stores/useAudio";
 import { useGame } from "@/lib/stores/useGame";
 import World from "./World";
@@ -84,6 +84,7 @@ const Game = () => {
           
           ws.onopen = () => {
             console.log("WebSocket connection established");
+            setConnectionStatus("connected");
             
             // Send initial player data
             ws.send(JSON.stringify({
@@ -94,6 +95,19 @@ const Game = () => {
                 health: playerState.health
               }
             }));
+            
+            // Setup heartbeat to keep connection active
+            heartbeatTimerRef.current = window.setInterval(() => {
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: "heartbeat",
+                  data: {
+                    id: playerIdRef.current,
+                    timestamp: Date.now()
+                  }
+                }));
+              }
+            }, 30000); // Send heartbeat every 30 seconds
           };
           
           ws.onmessage = (event) => {
@@ -142,6 +156,7 @@ const Game = () => {
                   // Handle match found message
                   console.log("Match found with opponent:", message.data.opponent);
                   setRemotePlayers([message.data.opponent]);
+                  setConnectionStatus("matched");
                   break;
               }
             } catch (error) {
@@ -151,11 +166,19 @@ const Game = () => {
           
           ws.onclose = () => {
             console.log("WebSocket connection closed");
+            setConnectionStatus("disconnected");
             socketRef.current = null;
+            
+            // Clear heartbeat timer
+            if (heartbeatTimerRef.current) {
+              clearInterval(heartbeatTimerRef.current);
+              heartbeatTimerRef.current = null;
+            }
           };
           
           ws.onerror = (error) => {
             console.error("WebSocket error:", error);
+            setConnectionStatus("disconnected");
           };
           
           // Store the WebSocket connection
@@ -182,6 +205,15 @@ const Game = () => {
         socketRef.current.close();
         socketRef.current = null;
       }
+      
+      // Clear heartbeat timer
+      if (heartbeatTimerRef.current) {
+        clearInterval(heartbeatTimerRef.current);
+        heartbeatTimerRef.current = null;
+      }
+      
+      // Reset connection status
+      setConnectionStatus("disconnected");
     };
   }, [phase, backgroundMusic, isMuted, mode]);
 
@@ -263,6 +295,25 @@ const Game = () => {
     );
   };
 
+  // Connection status messages for multiplayer mode
+  const getConnectionStatusMessage = () => {
+    switch (connectionStatus) {
+      case "disconnected":
+        return "Disconnected from server";
+      case "connecting":
+        return "Connecting to server...";
+      case "connected":
+        return "Connected - Waiting for opponent...";
+      case "matched":
+        return "Opponent found! Game on!";
+      default:
+        return "";
+    }
+  };
+
+  // Determine if we need to show the connection status (only in multiplayer mode)
+  const showConnectionStatus = mode === "multiplayer" && connectionStatus !== "matched";
+
   return (
     <>
       {/* Performance stats (visible in development) */}
@@ -291,6 +342,27 @@ const Game = () => {
               position={player.position} 
             />
           ))}
+          
+          {/* Multiplayer connection status overlay */}
+          {showConnectionStatus && (
+            <Html fullscreen>
+              <div style={{
+                position: 'absolute',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '16px',
+                textAlign: 'center'
+              }}>
+                {getConnectionStatusMessage()}
+              </div>
+            </Html>
+          )}
         </>
       )}
     </>
