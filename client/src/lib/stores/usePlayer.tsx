@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { generateId, normalizeVector } from "@/components/game/Physics";
 import { useWeapons } from "./useWeapons";
+import * as THREE from "three";
 
 // Projectile type
 export interface Projectile {
@@ -54,8 +55,21 @@ export const usePlayer = create<PlayerState>((set, get) => ({
     const weaponsState = useWeapons.getState();
     const weaponData = weaponsState.getCurrentWeaponData();
     
-    // Calculate projectile start position (in front of player)
-    const forward: [number, number, number] = [0, 0, -1]; // Forward in -Z direction
+    // Use THREE directly to get camera direction
+    // We need to use the actual camera direction from the scene rather than a fixed vector
+    // Using global THREE object's current camera if available
+    let cameraDirection: [number, number, number];
+    
+    // Retrieve the global THREE.Camera object if it exists in window
+    if (typeof window !== 'undefined' && (window as any).threeCamera) {
+      const camera = (window as any).threeCamera;
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      cameraDirection = [direction.x, direction.y, direction.z];
+    } else {
+      // Fallback to forward direction if camera not available
+      cameraDirection = [0, 0, -1];
+    }
     
     // Get weapon data
     const bulletDamage = weaponData.damage;
@@ -65,14 +79,14 @@ export const usePlayer = create<PlayerState>((set, get) => ({
     const newProjectiles: Projectile[] = [];
     
     for (let i = 0; i < projectilesPerShot; i++) {
-      // Add spread for shotgun
-      let direction: [number, number, number] = [...forward]; // Default direction
+      // Start with camera direction
+      let direction: [number, number, number] = [...cameraDirection];
       
       if (weaponsState.currentWeapon === "shotgun") {
         // Add random spread for shotgun (-15 to 15 degrees in both axes)
         const spreadX = (Math.random() - 0.5) * 0.5;
         const spreadY = (Math.random() - 0.5) * 0.5;
-        direction = [forward[0] + spreadX, forward[1] + spreadY, forward[2]];
+        direction = [direction[0] + spreadX, direction[1] + spreadY, direction[2]];
         direction = normalizeVector(direction);
       }
       
@@ -81,7 +95,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
         position: [position[0], position[1] + 1.6, position[2]], // Start at player eye level
         direction: direction,
         speed: 40, // Units per second
-        damage: bulletDamage,
+        damage: 25, // Increase damage to make it more noticeable
         timeCreated: Date.now(),
         color: "#ffff00",
         hit: false,

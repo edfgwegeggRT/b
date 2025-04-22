@@ -80,12 +80,24 @@ const Player = () => {
     };
   }, [camera, phase, playerState, weaponsState, buildingState]);
 
-  // Initialize player position
+  // Initialize player position and store camera reference globally for projectiles
   useEffect(() => {
     if (playerRef.current) {
       playerRef.current.position.set(0, 1, 0);
       camera.position.set(0, 1.8, 0);
+      
+      // Store camera reference in window for projectiles to use
+      if (typeof window !== 'undefined') {
+        (window as any).threeCamera = camera;
+      }
     }
+    
+    // Clean up the global reference when component unmounts
+    return () => {
+      if (typeof window !== 'undefined') {
+        (window as any).threeCamera = null;
+      }
+    };
   }, [camera]);
 
   // Handle projectile collisions
@@ -135,11 +147,11 @@ const Player = () => {
     cameraDirection.y = 0;
     cameraDirection.normalize();
     
-    // Get right vector from camera
+    // Get right vector from camera - fix inverted left/right controls
     const rightVector = new THREE.Vector3(
-      cameraDirection.z,
+      -cameraDirection.z,
       0,
-      -cameraDirection.x
+      cameraDirection.x
     ).normalize();
     
     // Reset movement velocity
