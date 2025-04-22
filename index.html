@@ -1,63 +1,42 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Shooter</title>
-    <script type="module" src="/client/dist/assets/index.js"></script>
-    <link rel="stylesheet" href="/client/dist/assets/index.css">
+    <title>3D Shooter Game</title>
     <style>
-        body, html { 
+        body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
-        }
-        #root {
-            width: 100%;
-            height: 100%;
-        }
-        .loading {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
             color: white;
             text-align: center;
-            font-family: Arial, sans-serif;
         }
-        .loading h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
         }
-        .loading p {
+        .play-button {
+            display: inline-block;
+            padding: 15px 30px;
             font-size: 18px;
-            margin-bottom: 20px;
-        }
-        .loading .controls {
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
             margin-top: 20px;
-            font-size: 14px;
-            color: #ccc;
+        }
+        .play-button:hover {
+            background: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div class="loading">
-            <h1>3D SHOOTER</h1>
-            <p>Loading game assets...</p>
-            <div class="controls">
-                Controls:<br>
-                WASD: Move | SPACE: Jump | MOUSE: Look | LEFT CLICK: Shoot<br>
-                R: Reload | Q: Change Weapon | B: Build | E: Start Game
-            </div>
-        </div>
+    <div class="container">
+        <h1>Welcome to 3D Shooter</h1>
+        <p>Experience an exciting 3D shooting game right in your browser!</p>
+        <a href="/client/dist/index.html" class="play-button">Play Game</a>
     </div>
 </body>
 </html>
